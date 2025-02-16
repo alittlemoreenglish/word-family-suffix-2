@@ -1,0 +1,810 @@
+<html><head><base href="https://">
+<style>
+:root {
+  --primary: #2b87d1;
+  --secondary: #34495e;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.game-container {
+  background: white;
+  border-radius: 15px;
+  padding: 2rem;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  margin: 2rem;
+  max-width: 600px;
+  width: 90%;
+}
+
+.word-display {
+  font-size: 2rem;
+  color: var(--primary);
+  text-align: center;
+  margin: 1rem 0;
+  min-height: 3rem;
+}
+
+.question {
+  font-size: 1.2rem;
+  color: var(--secondary);
+  text-align: center;
+  margin: 1rem 0;
+  min-height: 4rem;
+}
+
+.answer-input {
+  display: block;
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.1rem;
+  border: 2px solid var(--primary);
+  border-radius: 8px;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.button-container {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+}
+
+button {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  background: #1a6cb3;
+}
+
+button.skip {
+  background: var(--secondary);
+}
+
+button.skip:hover {
+  background: #2c3e50;
+}
+
+.new-challenge {
+  margin-top: 1rem;
+  background: #27ae60 !important; /* Green color to differentiate it */
+}
+
+.new-challenge:hover {
+  background: #219a52 !important;
+}
+
+.score {
+  font-size: 1.2rem;
+  color: var(--secondary);
+  text-align: center;
+}
+
+.feedback {
+  text-align: center;
+  min-height: 2rem;
+  margin-top: 1rem;
+  font-weight: bold;
+}
+
+.correct { color: #27ae60; }
+.incorrect { color: #e74c3c; }
+
+.celebration-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.8);
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.celebration-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 15px;
+  text-align: center;
+}
+
+.celebration-content img {
+  max-width: 200px;
+  margin: 1rem 0;
+}
+</style>
+</head>
+<body>
+<div class="game-container">
+  <h1>Word Family Challenge</h1>
+  <h2>(-hood, -ty, -ment, -ness, -ry, -ship, -sion/tion/xion, -sis)</h2>
+  <p class="subtitle">Complete this challenge successfully and earn a Pokemon!</p>
+  <div class="score">Score: <span id="score">0</span></div>
+  <div class="word-display" id="word"></div>
+  <div class="question" id="question"></div>
+  <input type="text" class="answer-input" id="answer" placeholder="Type your answer here">
+  <div class="button-container">
+    <button onclick="checkAnswer()">Submit Answer</button>
+    <button onclick="skipWord()" class="skip">Skip this word</button>
+  </div>
+  <button onclick="startNewChallenge()" class="new-challenge">Start a New Challenge</button>
+  <div class="feedback" id="feedback"></div>
+</div>
+
+<div class="celebration-modal" id="celebrationModal">
+  <div class="celebration-content">
+    <h2>Congratulations!</h2>
+    <p>You've correctly answered 10 questions! You've won this Pokemon!</p>
+    <div id="pokemonImage"></div>
+    <button onclick="closeCelebration()">Continue Playing</button>
+  </div>
+</div>
+
+<script>
+const wordFamilies = [
+  {
+    "baseWord": "complex",
+    "question": "What noun is formed by adding a suffix to the word 'complex' and refers to the appearance or condition of the skin, particularly the face?",
+    "correct": ["complexion"]
+  },
+  {
+    "baseWord": "child",
+    "question": "What noun is formed by adding a suffix to the word 'child' and refers to the state or condition of being a child?",
+    "correct": ["childhood"]
+  },
+  {
+    "baseWord": "brother",
+    "question": "What noun is formed by adding a suffix to the word 'brother' and refers to the state or relationship of being a brother?",
+    "correct": ["brotherhood"]
+  },
+  {
+    "baseWord": "parent",
+    "question": "What noun is formed by adding a suffix to the word 'parent' and refers to the state of being a parent?",
+    "correct": ["parenthood"]
+  },
+  {
+    "baseWord": "neighbor",
+    "question": "What noun is formed by adding a suffix to the word 'neighbor' and refers to the state or quality of being a neighbor?",
+    "correct": ["neighborhood"]
+  },
+  {
+    "baseWord": "man",
+    "question": "What noun is formed by adding a suffix to the word 'man' and refers to the state or condition of being an adult male?",
+    "correct": ["manhood"]
+  },
+  {
+    "baseWord": "woman",
+    "question": "What noun is formed by adding a suffix to the word 'woman' and refers to the state or condition of being an adult female?",
+    "correct": ["womanhood"]
+  },
+  {
+    "baseWord": "adult",
+    "question": "What noun is formed by adding a suffix to the word 'adult' and refers to the state of being an adult?",
+    "correct": ["adulthood"]
+  },
+  {
+    "baseWord": "likely",
+    "question": "What noun is formed by adding a suffix to the word 'likely' and refers to the state of being similar or the quality of being alike?",
+    "correct": ["likelihood"]
+  },
+  {
+    "baseWord": "sister",
+    "question": "What noun is formed by adding a suffix to the word 'sister' and refers to the state or relationship of being a sister?",
+    "correct": ["sisterhood"]
+  },
+  {
+    "baseWord": "active",
+    "question": "What noun is formed by adding a suffix to the word 'active' and refers to the state of being active or engaged?",
+    "correct": ["activity"]
+  },
+  {
+    "baseWord": "flexible",
+    "question": "What noun is formed by adding a suffix to the word 'flexible' and refers to the quality of being flexible?",
+    "correct": ["flexibility"]
+  },
+  {
+    "baseWord": "real",
+    "question": "What noun is formed by adding a suffix to the word 'real' and refers to the quality of being real or genuine?",
+    "correct": ["reality"]
+  },
+  {
+    "baseWord": "responsible",
+    "question": "What noun is formed by adding a suffix to the word 'responsible' and refers to the quality of being accountable for something?",
+    "correct": ["responsibility"]
+  },
+  {
+    "baseWord": "creative",
+    "question": "What noun is formed by adding a suffix to the word 'creative' and refers to the quality of being able to create or invent new ideas?",
+    "correct": ["creativity"]
+  },
+  {
+    "baseWord": "authentic",
+    "question": "What noun is formed by adding a suffix to the word 'authentic' and refers to the quality of being genuine or true?",
+    "correct": ["authenticity"]
+  },
+  {
+    "baseWord": "secure",
+    "question": "What noun is formed by adding a suffix to the word 'secure' and refers to the state of being free from danger or risk?",
+    "correct": ["security"]
+  },
+  {
+    "baseWord": "able",
+    "question": "What noun is formed by adding a suffix to the word 'able' and refers to the skill or power to do something?",
+    "correct": ["ability"]
+  },
+  {
+    "baseWord": "necessary",
+    "question": "What noun is formed by adding a suffix to the word 'necessary' and refers to the quality of being required or essential?",
+    "correct": ["necessity"]
+  },
+  {
+    "baseWord": "responsible",
+    "question": "What noun is formed by adding a suffix to the word 'responsible' and refers to the state of being accountable for something or someone?",
+    "correct": ["responsibility"]
+  },
+  {
+    "baseWord": "legal",
+    "question": "What noun is formed by adding a suffix to the word 'legal' and refers to the state of being lawful or according to the law?",
+    "correct": ["legality"]
+  },
+  {
+    "baseWord": "achieve",
+    "question": "What noun is formed by adding a suffix to the word 'achieve' and refers to the process of successfully reaching a goal?",
+    "correct": ["achievement"]
+  },
+  {
+    "baseWord": "agree",
+    "question": "What noun is formed by adding a suffix to the word 'agree' and refers to the state of having a shared opinion or consent?",
+    "correct": ["agreement"]
+  },
+  {
+    "baseWord": "enjoy",
+    "question": "What noun is formed by adding a suffix to the word 'enjoy' and refers to the state of taking pleasure in something?",
+    "correct": ["enjoyment"]
+  },
+  {
+    "baseWord": "develop",
+    "question": "What noun is formed by adding a suffix to the word 'develop' and refers to the process of growth or improvement?",
+    "correct": ["development"]
+  },
+  {
+    "baseWord": "govern",
+    "question": "What noun is formed by adding a suffix to the word 'govern' and refers to the action or process of ruling or managing a state or organization?",
+    "correct": ["government"]
+  },
+  {
+    "baseWord": "embellish",
+    "question": "What noun is formed by adding a suffix to the word 'embellish' and refers to the process of making something more attractive by adding decorative details?",
+    "correct": ["embellishment"]
+  },
+  {
+    "baseWord": "argue",
+    "question": "What noun is formed by adding a suffix to the word 'argue' and refers to the act of exchanging or debating opposing views?",
+    "correct": ["argument"]
+  },
+  {
+    "baseWord": "enlighten",
+    "question": "What noun is formed by adding a suffix to the word 'enlighten' and refers to the process of giving someone greater knowledge or insight?",
+    "correct": ["enlightenment"]
+  },
+  {
+    "baseWord": "invest",
+    "question": "What noun is formed by adding a suffix to the word 'invest' and refers to the action of putting money into something for profit?",
+    "correct": ["investment"]
+  },
+  {
+    "baseWord": "amuse",
+    "question": "What noun is formed by adding a suffix to the word 'amuse' and refers to the state of finding something entertaining or enjoyable?",
+    "correct": ["amusement"]
+  },
+  {
+    "baseWord": "disappoint",
+    "question": "What noun is formed by adding a suffix to the word 'disappoint' and refers to the feeling of sadness or dissatisfaction when expectations are not met?",
+    "correct": ["disappointment"]
+  },
+  {
+    "baseWord": "achieve",
+    "question": "What noun is formed by adding a suffix to the word 'achieve' and refers to the result of achieving a goal or success?",
+    "correct": ["achievement"]
+  },
+  {
+    "baseWord": "assign",
+    "question": "What noun is formed by adding a suffix to the word 'assign' and refers to the act of giving someone a task or responsibility?",
+    "correct": ["assignment"]
+  },
+  {
+    "baseWord": "improve",
+    "question": "What noun is formed by adding a suffix to the word 'improve' and refers to the act of making something better or more effective?",
+    "correct": ["improvement"]
+  },
+  {
+    "baseWord": "recruit",
+    "question": "What noun is formed by adding a suffix to the word 'recruit' and refers to the process of hiring new employees or members?",
+    "correct": ["recruitment"]
+  },
+  {
+    "baseWord": "establish",
+    "question": "What noun is formed by adding a suffix to the word 'establish' and refers to the process of setting up or founding something?",
+    "correct": ["establishment"]
+  },
+  {
+    "baseWord": "entertain",
+    "question": "What noun is formed by adding a suffix to the word 'entertain' and refers to the act of providing amusement or enjoyment?",
+    "correct": ["entertainment"]
+  },
+  {
+    "baseWord": "imprison",
+    "question": "What noun is formed by adding a suffix to the word 'imprison' and refers to the condition of being kept in jail or confined?",
+    "correct": ["imprisonment"]
+  },
+  {
+    "baseWord": "treat",
+    "question": "What noun is formed by adding a suffix to the word 'treat' and refers to the action or process of providing medical care or therapy?",
+    "correct": ["treatment"]
+  },
+  {
+    "baseWord": "happy",
+    "question": "What noun is formed by adding a suffix to the word 'happy' and refers to the state of being happy?",
+    "correct": ["happiness"]
+  },
+  {
+    "baseWord": "kind",
+    "question": "What noun is formed by adding a suffix to the word 'kind' and refers to the quality of being kind?",
+    "correct": ["kindness"]
+  },
+  {
+    "baseWord": "dark",
+    "question": "What noun is formed by adding a suffix to the word 'dark' and refers to the state of being dark or having little light?",
+    "correct": ["darkness"]
+  },
+  {
+    "baseWord": "sad",
+    "question": "What noun is formed by adding a suffix to the word 'sad' and refers to the state of feeling sorrowful or downhearted?",
+    "correct": ["sadness"]
+  },
+  {
+    "baseWord": "soft",
+    "question": "What noun is formed by adding a suffix to the word 'soft' and refers to the quality of being soft or gentle to the touch?",
+    "correct": ["softness"]
+  },
+  {
+    "baseWord": "ill",
+    "question": "What noun is formed by adding a suffix to the word 'ill' and refers to the state of being unwell or sick?",
+    "correct": ["illness"]
+  },
+  {
+    "baseWord": "weak",
+    "question": "What noun is formed by adding a suffix to the word 'weak' and refers to the quality of lacking strength?",
+    "correct": ["weakness"]
+  },
+  {
+    "baseWord": "loud",
+    "question": "What noun is formed by adding a suffix to the word 'loud' and refers to the state of being loud or having a high volume?",
+    "correct": ["loudness"]
+  },
+  {
+    "baseWord": "slow",
+    "question": "What noun is formed by adding a suffix to the word 'slow' and refers to the quality of being slow or taking time to move or act?",
+    "correct": ["slowness"]
+  },
+  {
+    "baseWord": "clean",
+    "question": "What noun is formed by adding a suffix to the word 'clean' and refers to the state of being free from dirt or pollution?",
+    "correct": ["cleanliness"]
+  },
+  {
+    "baseWord": "hard",
+    "question": "What noun is formed by adding a suffix to the word 'hard' and refers to the quality of being firm or difficult to break?",
+    "correct": ["hardness"]
+  },
+  {
+    "baseWord": "rich",
+    "question": "What noun is formed by adding a suffix to the word 'rich' and refers to the quality of having abundant wealth or resources?",
+    "correct": ["richness"]
+  },
+  {
+    "baseWord": "sick",
+    "question": "What noun is formed by adding a suffix to the word 'sick' and refers to the state of being unwell or affected by illness?",
+    "correct": ["sickness"]
+  },
+  {
+    "baseWord": "tall",
+    "question": "What noun is formed by adding a suffix to the word 'tall' and refers to the quality of being tall or having a great height?",
+    "correct": ["tallness"]
+  },
+  {
+    "baseWord": "smooth",
+    "question": "What noun is formed by adding a suffix to the word 'smooth' and refers to the quality of being smooth or having a surface free from roughness?",
+    "correct": ["smoothness"]
+  },
+  {
+    "baseWord": "brave",
+    "question": "What noun is formed by adding a suffix to the word 'brave' and refers to the quality of being courageous or daring?",
+    "correct": ["braveness"]
+  },
+  {
+    "baseWord": "sweet",
+    "question": "What noun is formed by adding a suffix to the word 'sweet' and refers to the quality of being sweet or having a pleasing taste?",
+    "correct": ["sweetness"]
+  },
+  {
+    "baseWord": "bright",
+    "question": "What noun is formed by adding a suffix to the word 'bright' and refers to the quality of being bright or emitting light?",
+    "correct": ["brightness"]
+  },
+  {
+    "baseWord": "dry",
+    "question": "What noun is formed by adding a suffix to the word 'dry' and refers to the state of being dry or lacking moisture?",
+    "correct": ["dryness"]
+  },
+  {
+    "baseWord": "shy",
+    "question": "What noun is formed by adding a suffix to the word 'shy' and refers to the state of being reserved or nervous in social situations?",
+    "correct": ["shyness"]
+  },
+  {
+    "baseWord": "dark",
+    "question": "What noun is formed by adding a suffix to the word 'dark' and refers to the quality of being dark or lacking light?",
+    "correct": ["darkness"]
+  },
+  {
+    "baseWord": "lonely",
+    "question": "What noun is formed by adding a suffix to the word 'lonely' and refers to the quality of feeling lonely or isolated?",
+    "correct": ["loneliness"]
+  },
+  {
+    "baseWord": "quick",
+    "question": "What noun is formed by adding a suffix to the word 'quick' and refers to the quality of being fast or prompt?",
+    "correct": ["quickness"]
+  },
+  {
+    "baseWord": "full",
+    "question": "What noun is formed by adding a suffix to the word 'full' and refers to the state of being filled to capacity?",
+    "correct": ["fullness"]
+  },
+  {
+    "baseWord": "sharp",
+    "question": "What noun is formed by adding a suffix to the word 'sharp' and refers to the quality of having a pointed edge or being intense?",
+    "correct": ["sharpness"]
+  },
+  {
+    "baseWord": "enter",
+    "question": "What noun is formed by adding a suffix to the word 'enter' and refers to the act of entering or a place where one can enter?",
+    "correct": ["entry"]
+  },
+  {
+    "baseWord": "rob",
+    "question": "What noun is formed by adding a suffix to the word 'rob' and refers to the act of stealing or a crime involving theft?",
+    "correct": ["robbery"]
+  },
+  {
+    "baseWord": "minister",
+    "question": "What noun is formed by adding a suffix to the word 'minister' and refers to a government official in charge of a particular department?",
+    "correct": ["ministry"]
+  },
+  {
+    "baseWord": "jewel",
+    "question": "What noun is formed by adding a suffix to the word 'jewel' and refers to the profession or business of dealing with jewels?",
+    "correct": ["jewelry"]
+  },
+  {
+    "baseWord": "friend",
+    "question": "What noun is formed by adding a suffix to the word 'friend' and refers to the state or condition of being friends?",
+    "correct": ["friendship"]
+  },
+  {
+    "baseWord": "leader",
+    "question": "What noun is formed by adding a suffix to the word 'leader' and refers to the position or role of being a leader?",
+    "correct": ["leadership"]
+  },
+  {
+    "baseWord": "member",
+    "question": "What noun is formed by adding a suffix to the word 'member' and refers to the state of being a part of a group or organization?",
+    "correct": ["membership"]
+  },
+  {
+    "baseWord": "hard",
+    "question": "What noun is formed by adding a suffix to the word 'hard' and refers to the quality of being hard or tough in skill or work?",
+    "correct": ["hardship"]
+  },
+  {
+    "baseWord": "craftsman",
+    "question": "What noun is formed by adding a suffix to the word 'craftsman' and refers to the skill or art of making things by hand?",
+    "correct": ["craftsmanship"]
+  },
+  {
+    "baseWord": "scholar",
+    "question": "What noun is formed by adding a suffix to the word 'scholar' and refers to the condition or status of being a scholar?",
+    "correct": ["scholarship"]
+  },
+  {
+    "baseWord": "citizen",
+    "question": "What noun is formed by adding a suffix to the word 'citizen' and refers to the condition of being a citizen or member of a country?",
+    "correct": ["citizenship"]
+  },
+  {
+    "baseWord": "owner",
+    "question": "What noun is formed by adding a suffix to the word 'owner' and refers to the condition or fact of owning something?",
+    "correct": ["ownership"]
+  },
+  {
+    "baseWord": "partner",
+    "question": "What noun is formed by adding a suffix to the word 'partner' and refers to the relationship or association between business partners?",
+    "correct": ["partnership"]
+  },
+  {
+    "baseWord": "fellow",
+    "question": "What noun is formed by adding a suffix to the word 'fellow' and refers to the state of being a member of a group or society?",
+    "correct": ["fellowship"]
+  },
+  {
+    "baseWord": "relation",
+    "question": "What noun is formed by adding a suffix to the word 'relate' and refers to the connection or interaction between people or groups?",
+    "correct": ["relationship"]
+  },
+  {
+    "baseWord": "sportsman",
+    "question": "What noun is formed by adding a suffix to the word 'sportsman' and refers to the competitive activities involving physical exertion or skill?",
+    "correct": ["sportsmanship"]
+  },
+  {
+    "baseWord": "entrepreneur",
+    "question": "What noun is formed by adding a suffix to the word 'entrepreneur' and refers to the quality or condition of being an entrepreneur?",
+    "correct": ["entrepreneurship"]
+  },
+  {
+    "baseWord": "act",
+    "question": "What noun is formed by adding a suffix to the word 'act' and refers to the process of taking action or doing something?",
+    "correct": ["action"]
+  },
+  {
+    "baseWord": "inform",
+    "question": "What noun is formed by adding a suffix to the word 'inform' and refers to the process of giving information?",
+    "correct": ["information"]
+  },
+  {
+    "baseWord": "create",
+    "question": "What noun is formed by adding a suffix to the word 'create' and refers to the process of making something new?",
+    "correct": ["creation"]
+  },
+  {
+    "baseWord": "decide",
+    "question": "What noun is formed by adding a suffix to the word 'decide' and refers to the process of making a choice or judgment?",
+    "correct": ["decision"]
+  },
+  {
+    "baseWord": "organize",
+    "question": "What noun is formed by adding a suffix to the word 'organize' and refers to the process of arranging or structuring things?",
+    "correct": ["organization"]
+  },
+  {
+    "baseWord": "educate",
+    "question": "What noun is formed by adding a suffix to the word 'educate' and refers to the process of teaching or imparting knowledge?",
+    "correct": ["education"]
+  },
+  {
+    "baseWord": "propose",
+    "question": "What noun is formed by adding a suffix to the word 'propose' and refers to the act of suggesting something?",
+    "correct": ["proposition"]
+  },
+  {
+    "baseWord": "discuss",
+    "question": "What noun is formed by adding a suffix to the word 'discuss' and refers to the process of talking about a topic in detail?",
+    "correct": ["discussion"]
+  },
+  {
+    "baseWord": "observe",
+    "question": "What noun is formed by adding a suffix to the word 'observe' and refers to the process of watching or noticing something carefully?",
+    "correct": ["observation"]
+  },
+  {
+    "baseWord": "communicate",
+    "question": "What noun is formed by adding a suffix to the word 'communicate' and refers to the process of exchanging information?",
+    "correct": ["communication"]
+  },
+  {
+    "baseWord": "translate",
+    "question": "What noun is formed by adding a suffix to the word 'translate' and refers to the process of converting text or speech from one language to another?",
+    "correct": ["translation"]
+  },
+  {
+    "baseWord": "conclude",
+    "question": "What noun is formed by adding a suffix to the word 'conclude' and refers to the act of bringing something to an end?",
+    "correct": ["conclusion"]
+  },
+  {
+    "baseWord": "compete",
+    "question": "What noun is formed by adding a suffix to the word 'compete' and refers to the act of competing in a contest or competition?",
+    "correct": ["competition"]
+  },
+  {
+    "baseWord": "expand",
+    "question": "What noun is formed by adding a suffix to the word 'expand' and refers to the process of increasing in size or scope?",
+    "correct": ["expansion"]
+  },
+  {
+    "baseWord": "examine",
+    "question": "What noun is formed by adding a suffix to the word 'examine' and refers to the process of inspecting or looking at something carefully?",
+    "correct": ["examination"]
+  },
+  {
+    "baseWord": "revise",
+    "question": "What noun is formed by adding a suffix to the word 'revise' and refers to the process of making changes or improvements to something?",
+    "correct": ["revision"]
+  },
+  {
+    "baseWord": "diagnose",
+    "question": "What noun is formed by adding a suffix to the word 'diagnose' and refers to the identification of a disease or condition?",
+    "correct": ["diagnosis"]
+  },
+  {
+    "baseWord": "analyze",
+    "question": "What noun is formed by adding a suffix to the word 'analyze' and refers to the process of examining something in detail?",
+    "correct": ["analysis"]
+  },
+  {
+    "baseWord": "hypothesize",
+    "question": "What noun is formed by adding a suffix to the word 'hypothesize' and refers to a proposed explanation made based on limited evidence?",
+    "correct": ["hypothesis"]
+  },
+  {
+    "baseWord": "paralyze",
+    "question": "What noun is formed by adding a suffix to the word 'paralyze' and refers to the loss of the ability to move part of the body?",
+    "correct": ["paralysis"]
+  },
+  {
+    "baseWord": "emphasize",
+    "question": "What noun is formed by adding a suffix to the word 'emphasize' and refers to the importance given to something?",
+    "correct": ["emphasis"]
+  },
+  {
+    "baseWord": "synthesize",
+    "question": "What noun is formed by adding a suffix to the word 'synthesize' and refers to the combination of different components to form a whole?",
+    "correct": ["synthesis"]
+  },
+  {
+    "baseWord": "osmosis",
+    "question": "What noun is formed by adding a suffix to the word 'osmosis' and refers to the process by which molecules pass through a semipermeable membrane?",
+    "correct": ["osmosis"]
+  }
+];
+
+let currentWordIndex = 0;
+let score = 0;
+let correctAnswers = 0;
+
+async function showCelebration() {
+  const modal = document.getElementById('celebrationModal');
+  const pokemonId = Math.floor(Math.random() * 898) + 1;
+  const pokemonContainer = document.getElementById('pokemonImage');
+  
+  try {
+    const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
+    const data = await response.json();
+    const pokemonImage = document.createElement('img');
+    pokemonImage.src = data.sprites.other['official-artwork'].front_default;
+    pokemonImage.alt = `Pokemon ${data.name}`;
+    pokemonImage.width = 200;
+    pokemonImage.height = 200;
+    
+    pokemonContainer.innerHTML = '';
+    pokemonContainer.appendChild(pokemonImage);
+    modal.style.display = 'flex';
+  } catch (error) {
+    console.error('Error fetching Pokemon:', error);
+  }
+}
+
+function closeCelebration() {
+  const modal = document.getElementById('celebrationModal');
+  modal.style.display = 'none';
+}
+
+function displayWord() {
+  const wordDisplay = document.getElementById('word');
+  const questionDisplay = document.getElementById('question');
+  const answerInput = document.getElementById('answer');
+  
+  // Generate a random index instead of using currentWordIndex
+  currentWordIndex = Math.floor(Math.random() * wordFamilies.length);
+  const currentWord = wordFamilies[currentWordIndex];
+  
+  wordDisplay.textContent = currentWord.baseWord;
+  questionDisplay.textContent = currentWord.question;
+  answerInput.value = '';
+}
+
+function skipWord() {
+  const feedback = document.getElementById('feedback');
+  const currentWord = wordFamilies[currentWordIndex];
+  
+  feedback.textContent = `Skipped. The correct answer was '${currentWord.correct[0]}'`;
+  feedback.className = "feedback incorrect";
+  
+  setTimeout(() => {
+    // Generate a new random index instead of incrementing
+    currentWordIndex = Math.floor(Math.random() * wordFamilies.length);
+    feedback.textContent = "";
+    displayWord();
+  }, 2000);
+}
+
+function checkAnswer() {
+  const currentWord = wordFamilies[currentWordIndex];
+  const feedback = document.getElementById('feedback');
+  const scoreDisplay = document.getElementById('score');
+  const answerInput = document.getElementById('answer');
+  
+  const userAnswer = answerInput.value.trim().toLowerCase();
+  
+  if (currentWord.correct.includes(userAnswer)) {
+    score += 10;
+    correctAnswers++;
+    feedback.textContent = "Correct! Well done!";
+    feedback.className = "feedback correct";
+    
+    if (correctAnswers === 10) {
+      showCelebration();
+      correctAnswers = 0;
+    }
+  } else {
+    feedback.textContent = `Incorrect. The correct answer is '${currentWord.correct.join("' or '")}'`;
+    feedback.className = "feedback incorrect";
+  }
+  
+  scoreDisplay.textContent = score;
+  
+  setTimeout(() => {
+    // Generate a new random index instead of incrementing
+    currentWordIndex = Math.floor(Math.random() * wordFamilies.length);
+    feedback.textContent = "";
+    displayWord();
+  }, 2000);
+}
+
+function startNewChallenge() {
+  score = 0;
+  correctAnswers = 0;
+  const scoreDisplay = document.getElementById('score');
+  const feedback = document.getElementById('feedback');
+  
+  scoreDisplay.textContent = score;
+  feedback.textContent = "Starting a new challenge!";
+  feedback.className = "feedback";
+  
+  setTimeout(() => {
+    feedback.textContent = "";
+    displayWord();
+  }, 1500);
+}
+
+document.getElementById('answer').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    checkAnswer();
+  }
+});
+
+displayWord();
+</script>
+   <div class="footer">Author: Aaron Shi. Released in 2025.</div>
+</body></html>
